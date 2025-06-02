@@ -1,0 +1,37 @@
+[package]
+name = "SeriousSaveEditor"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+repository = "https://github.com/widberg/SeriousSaveEditor"
+authors = ["widberg"]
+rust-version = "1.85.0"
+
+[dependencies]
+anyhow = "1.0.98"
+binrw = "0.15.0"
+clap = { version = "4.5.39", features = ["derive"] }
+env_logger = "0.11.8"
+flate2 = "1.1.1"
+log = "0.4.27"
+rand = "0.8.5"
+rsa = "0.9.8"
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = "1.0.140"
+sha1 = "0.10.6"
+sha2 = "0.10.9"
+tiger = "0.2.1"
+
+[lints.clippy]
+bool_to_int_with_if = "warn"
+branches_sharing_code = "warn"
+comparison_chain = "warn"
+equatable_if_let = "warn"
+flat_map_option = "warn"
+redundant_type_annotations = "warn"
+str_to_string = "warn"
+string_to_string = "warn"
+use_self = "warn"
+used_underscore_binding = "warn"
+used_underscore_items = "warn"
+useless_let_if_seq = "warn"
