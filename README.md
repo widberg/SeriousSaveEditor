@@ -6,7 +6,20 @@ A save editor for Serious Engine games
 ![GitHub Release](https://img.shields.io/github/v/release/widberg/SeriousSaveEditor)
 [![Release Nightly](https://img.shields.io/badge/release-nightly-5e025f?labelColor=301934)](https://nightly.link/widberg/SeriousSaveEditor/workflows/build/master)
 
+## Support
+
 Right now it only works with The Talos Principle since that's the only game I own, if I ever get more Serious Engine games I'll probably add support for them. I also only tested saves from the latest Steam version, but it may work with other versions. This was a weekend project, so manage expectations accordingly. The outer signature stream format used for save files is also used for some engine files like `The Talos Principle\Content\Talos\{All.dat, DLC.dat}`.
+
+| Year | Game                                 | Serious Engine Version | Status |
+|------|--------------------------------------|------------------------|--------|
+| 2001 | Serious Sam: The First Encounter     | 1                      | ❌      |
+| 2002 | Serious Sam: The Second Encounter    | 1                      | ❌      |
+| 2002 | Serious Sam: Xbox                    | 1                      | ❌      |
+| 2005 | Serious Sam 2                        | 2                      | ❌      |
+| 2009 | Serious Sam HD: The First Encounter  | 3                      | ❌      |
+| 2009 | Serious Sam HD: The Second Encounter | 3                      | ❌      |
+| 2011 | Serious Sam 3: BFE                   | 3.5                    | ❌      |
+| 2014 | The Talos Principle                  | 4                      | ✔      |
 
 ## Usage
 
