@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use std::io::{Seek, Write};
 
 use binrw::{BinRead, BinResult, BinWrite, Endian, args, binrw, writer};
+use log::warn;
 use serde::{Deserialize, Serialize};
 
 use crate::helpers::{
@@ -265,40 +266,45 @@ impl BinRead for InternalObject {
                 }
             })?;
             let value = match &data_type.Type {
-                DataTypeType::Primitive { Bytes, .. } => match (data_type.Name.as_str(), Bytes) {
-                    // Special case for primitive named CString with size 8, it is a Pascal
-                    // string
-                    ("CString", 8) => {
+                DataTypeType::Primitive { Bytes, .. } => match data_type.Name.as_str() {
+                    // Special case for primitive named CString, it is a Pascal string
+                    "CString" => {
                         InternalObjectDataValue::CString(parse_pascal_string(reader, endian, ())?)
                     }
-                    // Special case for primitive named IDENT with size 8, it is a ULONG
-                    ("IDENT", 8) => {
+                    // Special case for primitive named IDENT, it is a ULONG
+                    "IDENT" => {
                         InternalObjectDataValue::IDENT(u32::read_options(reader, endian, ())?)
                     }
                     // Special cases for known types so they are easier to edit in the JSON
-                    ("UBYTE", 1) => {
+                    "UBYTE" => {
                         InternalObjectDataValue::UBYTE(u8::read_options(reader, endian, ())?)
                     }
-                    ("ULONG", 4) => {
+                    "ULONG" => {
                         InternalObjectDataValue::ULONG(u32::read_options(reader, endian, ())?)
                     }
-                    ("SLONG", 4) => {
+                    "SLONG" => {
                         InternalObjectDataValue::SLONG(i32::read_options(reader, endian, ())?)
                     }
-                    ("UQUAD", 8) => {
+                    "UQUAD" => {
                         InternalObjectDataValue::UQUAD(u64::read_options(reader, endian, ())?)
                     }
-                    ("SQUAD", 8) => {
+                    "SQUAD" => {
                         InternalObjectDataValue::SQUAD(i64::read_options(reader, endian, ())?)
                     }
-                    ("FLOAT", 4) => {
+                    "FLOAT" => {
                         InternalObjectDataValue::FLOAT(f32::read_options(reader, endian, ())?)
                     }
-                    _ => InternalObjectDataValue::Primitive(Vec::<u8>::read_options(
-                        reader,
-                        endian,
-                        args! { count: *Bytes as usize, inner: () },
-                    )?),
+                    _ => {
+                        warn!(
+                            "Unknown primitive type: ID: {}, name: {}, size: {}, format: {}",
+                            data_type.DataType, data_type.Name, Bytes, data_type.Format
+                        );
+                        InternalObjectDataValue::Primitive(Vec::<u8>::read_options(
+                            reader,
+                            endian,
+                            args! { count: *Bytes as usize, inner: () },
+                        )?)
+                    }
                 },
                 DataTypeType::Enum { Bytes } => match Bytes {
                     // Special cases for known enum sizes so they are easier to edit in the

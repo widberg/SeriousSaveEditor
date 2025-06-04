@@ -226,7 +226,7 @@ struct OBJSBlock { // InternalObjects
     u32 size;
     std::assert(size == parent.obty.size, "size == parent.obty.size");
     std::assert(size + parent.exob.size == parent.info.Objects, "size + parent.exob.size == parent.info.Objects");
-    u8 skip[0x12D0B]; // Parsing this is too hard in an ImHex pattern, change the size of this to work
+    u8 skip[-1]; // Parsing this is too hard in an ImHex pattern, change the size of this to work
 };
 
 struct EDOBBlock { // EditObjects
