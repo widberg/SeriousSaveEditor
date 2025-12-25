@@ -1,3 +1,4 @@
+import std.core;
 import std.sys;
 
 struct PascalString {
@@ -27,19 +28,30 @@ struct MSGSBlock { // Messages
 struct INFOBlock {  // Info
     char block_name[4];
     std::assert(block_name == "INFO", "block_name == \"INFO\"");
-    u32 EditDataStripped;
+    if (parent.metadata_block.version >= 8) {
+        u32 EditDataStripped;
+    }
     u32 ResourceFiles;
     u32 Idents;
     u32 Types;
     u32 Objects;
 };
 
+struct RFILBlockEntry {
+    u32 File;
+    std::assert(File == std::core::array_index(), "File == std::core::array_index()");
+    if (parent.parent.metadata_block.version >= 7) {
+        u32 Flags;
+    }
+    PascalString FileName;
+};
+
 struct RFILBlock { // ResourceFiles
     char block_name[4];
     std::assert(block_name == "RFIL", "block_name == \"RFIL\"");
     u32 size;
-    std::assert(size == 0, "size == 0");
     std::assert(size == parent.info.ResourceFiles, "size == parent.info.ResourceFiles");
+    RFILBlockEntry resource_files[size];
 };
 
 struct IDNTBlockEntry {
@@ -74,11 +86,11 @@ enum TypeKind : u32 {
     Pointer = 2,
     Array = 4,
     Struct = 5,
-    I = 6,
+    StaticArray = 6,
     StaticStackArray = 7,
     DynamicContainer = 8,
-    E = 11,
-    F = 12,
+    Ptr = 11,
+    Handle = 12,
     TypeDef = 13,
     D = 14,
 };
@@ -120,12 +132,24 @@ struct TypeKindPointer {
     u32 To; // Type of Object pointed to. The value read from the file for a pointer is either -1 or the ID of another object in the file.
 };
 
+struct TypeKindStaticArray {
+    u32 Of;
+};
+
 struct TypeKindStaticStackArray {
     u32 Of;
 };
 
 struct TypeKindDynamicContainer {
     u32 Of;
+};
+
+struct TypeKindPtr { // Distinct from TypeKindPointer somehow
+    u32 To;
+};
+
+struct TypeKindHandle {
+    u32 To;
 };
 
 struct TypeKindArray {
@@ -139,6 +163,7 @@ struct TypeKindArray {
 
 struct DTTY {
     char dtty[4];
+    std::assert(dtty == "DTTY", "dtty == \"DTTY\"");
     u32 DataType;
     PascalString Name;
     u32 Format;
@@ -149,8 +174,11 @@ struct DTTY {
         (TypeKind::Primitive): TypeKindPrimitive primitive;
         (TypeKind::Enum): TypeKindEnum enum_;
         (TypeKind::Pointer): TypeKindPointer pointer;
+        (TypeKind::StaticArray): TypeKindStaticArray static_array;
         (TypeKind::StaticStackArray): TypeKindStaticStackArray static_stack_array;
         (TypeKind::DynamicContainer): TypeKindDynamicContainer dynamic_container;
+        (TypeKind::Ptr): TypeKindPtr ptr;
+        (TypeKind::Handle): TypeKindHandle handle;
         (TypeKind::Array): TypeKindArray array;
         (_): u8 error[-1];
     }
@@ -164,12 +192,28 @@ struct INTYBlock { // Internal Types
     DTTY data_types[size];
 };
 
+struct EXOBBlockEntry {
+    u32 Object;
+    u32 File;
+    if (parent.parent.metadata_block.version < 9) {
+        s32 ResID;
+    } else {
+        u32 ObtType;
+        if (ObtType != 0) {
+            PascalString ResName;
+        } else {
+            s32 ResID;
+        }
+    }
+    u32 Type;
+};
+
 struct EXOBBlock { // ExternalObjects
     char block_name[4];
     std::assert(block_name == "EXOB", "block_name == \"EXOB\"");
     u32 size;
-    std::assert(size == 0, "size == 0");
     std::assert(size <= parent.info.Objects, "size <= parent.info.Objects");
+    EXOBBlockEntry entries[size];
 };
 
 struct ObjectTypeEntry {
@@ -220,13 +264,31 @@ struct OBJSBlockEntry {
     }
 };
 
+fn guess_objs_skip_size(u32 version) {
+    auto begin_offset = $;
+    auto end_offset = -1;
+
+    if (version >= 4) {
+        end_offset = std::mem::find_string_in_range(0, begin_offset, std::mem::size(), "EDOB");
+    } else {
+        end_offset = std::mem::find_string_in_range(0, begin_offset, std::mem::size(), "METAEND ");
+    }
+
+    if (end_offset == -1) {
+        std::assert(false, "Could not guess the OBJS skip size.");
+    }
+
+    return end_offset - begin_offset;
+};
+
 struct OBJSBlock { // InternalObjects
     char block_name[4];
     std::assert(block_name == "OBJS", "block_name == \"OBJS\"");
     u32 size;
     std::assert(size == parent.obty.size, "size == parent.obty.size");
+    // If size is < 4, we need to add or subtract 1 here to make it work?
     std::assert(size + parent.exob.size == parent.info.Objects, "size + parent.exob.size == parent.info.Objects");
-    u8 skip[-1]; // Parsing this is too hard in an ImHex pattern, change the size of this to work
+    u8 skip[guess_objs_skip_size(parent.metadata_block.version)]; // Parsing this is too hard in an ImHex pattern, change the size of this to work
 };
 
 struct EDOBBlock { // EditObjects
@@ -246,7 +308,9 @@ struct MetaendBlock {
 
 struct TheTalosPrincipleSaveGameData {
     MetadataBlock metadata_block;
-    MSGSBlock msgs;
+    if (metadata_block.version >= 10) {
+        MSGSBlock msgs;
+    }
     INFOBlock info;
     RFILBlock rfil;
     IDNTBlock idnt;
@@ -256,7 +320,9 @@ struct TheTalosPrincipleSaveGameData {
     OBTYBlock obty;
     EDTYBlock edty;
     OBJSBlock objs;
-    EDOBBlock edob;
+    if (metadata_block.version >= 4) {
+        EDOBBlock edob;
+    }
     MetaendBlock metaend_block;
 };
 

@@ -1,3 +1,4 @@
+import std.core;
 import std.sys;
 
 struct PascalString {
@@ -5,43 +6,73 @@ struct PascalString {
     char data[size];
 };
 
+enum FileType_ : u64 {
+    INFSTRM1 = 0x494E465354524D31,
+    WRKSTRM1 = 0x57524B5354524D31,
+    SIGSTRM1 = 0x5349475354524D31,
+};
+
+using FileType = be FileType_;
+
+enum FileSubType : u32 {
+    SIG2 = 0x53494732, // 2GIS in little endian as ASCII
+};
+
 enum HashMethod : u32 {
+    CRC32 = 1, // IEEE 802.3 Cyclic Redundancy Check
     SHA1 = 4,
     TIGER = 5,
     SHA256 = 6,
 };
 
+fn get_hash_size(HashMethod hash_method) {
+    match (hash_method) {
+        (HashMethod::CRC32): return 4;
+        (_): return -1;
+    }
+};
+
 struct SignatureBlock {
-    char SIGSTRM1[8]; // Or INFSTRM1 or WRKSTRM1
-    std::assert(SIGSTRM1 == "SIGSTRM1", "SIGSTRM1 == \"SIGSTRM1\"");
-    char _2GIS[4];
-    std::assert(_2GIS == "2GIS", "_2GIS == \"2GIS\"");
+    FileType file_type;
+    if (std::core::is_valid_enum(file_type)) {
+        FileSubType file_sub_type;
+        std::assert(std::core::is_valid_enum(file_sub_type), "std::core::is_valid_enum(file_sub_type)");
+    } else {
+        $ = addressof(this);
+    }
     u32 version;
-    std::assert(version == 5, "version == 5");
-    u32 block_size; // clamped to [0, 0x80000] when read
-    std::assert(block_size == 0x10000, "block_size == 0x10000");
+    u32 block_size; // clamped to [0, 0x80000] when read (Talos)
     HashMethod hash_method;
-    s32 hash_size; // clamped to [0, 0x1000] when read
-    std::assert(hash_size == 0, "hash_size == 0");
+    if (std::core::is_valid_enum(file_type)) {
+        s32 hash_size; // clamped to [0, 0x1000] when read
+        std::assert(hash_size == 0, "hash_size == 0");
+    } else {
+        s32 hash_size = get_hash_size(hash_method);
+    }
     u8 hash[hash_size];
-    u32 salt; // rng based on system time
-    if (version >= 2) {
-        u32 has_memory_stream_name;
-    }
-    if (version >= 3) {
-        u32 has_userid;
-    }
-    if (version >= 5) {
-        PascalString signature_related_string;
-    }
-    u32 signature_size; // clamped to [0, 0x1000]
-    if (version >= 3 && signature_size > 0) {
-        PascalString sign_key_name;
-        u8 signature[signature_size]; // See comments at the end of this file
+    if (std::core::is_valid_enum(file_type)) {
+        u32 salt; // rng based on system time
+        if (version >= 2) {
+            u32 has_memory_stream_name;
+        }
+        if (version >= 3) {
+            u32 has_userid;
+        }
+        if (version >= 5) {
+            PascalString signature_related_string;
+        }
+        u32 signature_size; // clamped to [0, 0x1000] (Talos)
+        if (version >= 3 && signature_size > 0) {
+            PascalString sign_key_name;
+            u8 signature[signature_size]; // See comments at the end of this file
+        }
     }
 };
 
 SignatureBlock signature_block @ 0x0;
+
+// Talos
+// SIGSTRM1 SIG2
 
 // if version < 2 then has_memory_stream_name = 0 and the field is not read
 // if version < 3 then has_userid = 0 and the field is not read
@@ -98,3 +129,14 @@ SignatureBlock signature_block @ 0x0;
 // the tail is the same as the mid but only the remaining data since the last mid
 // last block can be less than 0x10000 size
 // include the metaend bit
+
+// Serious Sam 2
+// No magic
+
+// CRC-32 on the bytes as is
+// First hash before data is for the bytes of the header from the beginning up to the hash
+// Each block size group of bytes has a hash after it
+// Last block only hashes whats available. No extra padding.
+
+// Overall very similar to Talos, but no signature so it's simpler
+// Not sure if I should split this off into it's own format
